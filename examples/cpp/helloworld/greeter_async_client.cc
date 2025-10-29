@@ -76,12 +76,14 @@ class GreeterClient {
     // Request that, upon completion of the RPC, "reply" be updated with the
     // server's response; "status" with the indication of whether the operation
     // was successful. Tag the request with the integer 1.
+    /* 设置请求消息 reply 和唯一的 tag 关联，将请求发送出去 */
     rpc->Finish(&reply, &status, (void*)1);
     void* got_tag;
     bool ok = false;
     // Block until the next result is available in the completion queue "cq".
     // The return value of Next should always be checked. This return value
     // tells us whether there is any kind of event or the cq_ is shutting down.
+    /* 使用 cq.Next() 等待 Completion Queue 返回响应消息体，通过 tag 关联对应的请求 */
     CHECK(cq.Next(&got_tag, &ok));
 
     // Verify that the result from "cq" corresponds, by its tag, our previous
