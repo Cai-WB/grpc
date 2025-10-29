@@ -137,8 +137,10 @@ int main(int argc, char** argv) {
       grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
 
   // Spawn reader thread that loops indefinitely
+  /* 该线程不断的通过 cq_.Next() 来等待返回 */
   std::thread thread_ = std::thread(&GreeterClient::AsyncCompleteRpc, &greeter);
 
+  /* 该线程批量发出 100 个 SayHello 的请求 */
   for (int i = 0; i < 100; i++) {
     std::string user("world " + std::to_string(i));
     greeter.SayHello(user);  // The actual RPC call!
