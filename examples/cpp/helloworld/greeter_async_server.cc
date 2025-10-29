@@ -82,6 +82,7 @@ class ServerImpl final {
     // Take in the "service" instance (in this case representing an asynchronous
     // server) and the completion queue "cq" used for asynchronous communication
     // with the gRPC runtime.
+    /* 初始构造列表中将状态设置为 CREATE */
     CallData(Greeter::AsyncService* service, ServerCompletionQueue* cq)
         : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE) {
       // Invoke the serving logic right away.
@@ -91,6 +92,7 @@ class ServerImpl final {
     void Proceed() {
       if (status_ == CREATE) {
         // Make this instance progress to the PROCESS state.
+        /* [2], 状态变更为 PROCESS */
         status_ = PROCESS;
 
         // As part of the initial CREATE state, we *request* that the system
@@ -98,24 +100,29 @@ class ServerImpl final {
         // the tag uniquely identifying the request (so that different CallData
         // instances can serve different requests concurrently), in this case
         // the memory address of this CallData instance.
+        /* [3], 将事件加入事件循环，可以在CompletionQueue中等待, 将对象自身的地址作为 tag 传入 */
         service_->RequestSayHello(&ctx_, &request_, &responder_, cq_, cq_,
                                   this);
       } else if (status_ == PROCESS) {
         // Spawn a new CallData instance to serve new clients while we process
         // the one for this CallData. The instance will deallocate itself as
         // part of its FINISH state.
+        /* [6], 创建新的CallData对象以接收新请求 */
         new CallData(service_, cq_);
 
         // The actual processing.
         std::string prefix("Hello ");
+        /* 设置reply */
         reply_.set_message(prefix + request_.name());
 
         // And we are done! Let the gRPC runtime know we've finished, using the
         // memory address of this instance as the uniquely identifying tag for
         // the event.
         status_ = FINISH;
+        /* [7], 将reply发送给客户端, 将事件加入到事件循环，可以在CompletionQueue中等待 */
         responder_.Finish(reply_, Status::OK, this);
       } else {
+        /* [10], delete this 清理自己，一条消息处理完成 */
         CHECK_EQ(status_, FINISH);
         // Once in the FINISH state, deallocate ourselves (CallData).
         delete this;
@@ -149,6 +156,7 @@ class ServerImpl final {
   // This can be run in multiple threads if needed.
   void HandleRpcs() {
     // Spawn a new CallData instance to serve new clients.
+    /* [1], 创建一个CallData，初始构造列表中将状态设置为 CREATE */
     new CallData(&service_, cq_.get());
     void* tag;  // uniquely identifies a request.
     bool ok;
@@ -158,8 +166,12 @@ class ServerImpl final {
       // memory address of a CallData instance.
       // The return value of Next should always be checked. This return value
       // tells us whether there is any kind of event or cq_ is shutting down.
+      /* [4], 收到请求，cq->Next()的阻塞结束并返回，得到tag, 即上次传入的CallData对象地址 */
+      /* [8], 发送完毕，cq->Next()的阻塞结束并返回，得到tag */
       CHECK(cq_->Next(&tag, &ok));
       CHECK(ok);
+      /* [5], 调用tag对应CallData对象的 Proceed()，此时状态为 Process */
+      /* [9], 调用tag对应CallData对象的 Proceed()，此时状态为 FINISH */
       static_cast<CallData*>(tag)->Proceed();
     }
   }
