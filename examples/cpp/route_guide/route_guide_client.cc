@@ -103,6 +103,9 @@ class RouteGuideClient {
 
     std::unique_ptr<ClientReader<Feature> > reader(
         stub_->ListFeatures(&context, rect));
+    /* 在调用 ServerStream RPC 时, 返回一个 ClientReader 的指针,
+     * Reader 通过不断的 Read()，来不断的读取流，结束时 Read() 会返回 false；
+     * 通过调用 Finish() 来读取返回状态 */
     while (reader->Read(&feature)) {
       std::cout << "Found feature called " << feature.name() << " at "
                 << feature.location().latitude() / kCoordFactor_ << ", "
@@ -130,6 +133,9 @@ class RouteGuideClient {
 
     std::unique_ptr<ClientWriter<Point> > writer(
         stub_->RecordRoute(&context, &stats));
+    /* 调用 ClientStream RPC 时，则会返回一个 ClientWriter 指针,
+     * Writer 会不断的调用 Write() 函数将流中的消息发出；发送完成后调用 WriteDone() 来说明发送完毕；
+     * 调用 Finish() 来等待对端发送状态 */
     for (int i = 0; i < kPoints; i++) {
       const Feature& f = feature_list_[feature_distribution(generator)];
       std::cout << "Visiting point " << f.location().latitude() / kCoordFactor_
