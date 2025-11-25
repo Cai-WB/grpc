@@ -82,6 +82,7 @@ class GreeterClient {
     bool ok = false;
 
     // Block until the next result is available in the completion queue "cq".
+    // 从队列里面取出回复消息，如果还没回包的话会阻塞
     while (cq_.Next(&got_tag, &ok)) {
       // The tag in this example is the memory location of the call object
       AsyncClientCall* call = static_cast<AsyncClientCall*>(got_tag);
@@ -91,6 +92,7 @@ class GreeterClient {
       CHECK(ok);
 
       if (call->status.ok())
+        // 获取到回包的数据
         std::cout << "Greeter received: " << call->reply.message() << std::endl;
       else
         std::cout << "RPC failed" << std::endl;
